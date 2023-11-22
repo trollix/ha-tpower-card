@@ -1,4 +1,10 @@
-console.info("%c v0.0.2 %c TPOWER-CARD ", "color: #000000; background:#ffa600 ; font-weight: 700;", "color: #000000; background: #03a9f4; font-weight: 700;");
+const CARD_VERSION = '0.1.0';
+const CARD_NAME = "HA-TPOWER-CARD";
+console.info(
+  `%c  ${CARD_NAME}  %c  Version ${CARD_VERSION}  `,
+    'color: white; font-weight: bold; background: crimson',
+    'color: #000; font-weight: bold; background: #ddd',
+);
 
 class TDVBarCard extends HTMLElement
  {
