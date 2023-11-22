@@ -6,7 +6,7 @@ console.info(
     'color: #000; font-weight: bold; background: #ddd',
 );
 
-class TDVBarCard extends HTMLElement
+class TPowerCard extends HTMLElement
  {
 //#################################################################################################  
   // The user supplied configuration. Throw an exception and Home Assistant will render an error card.
@@ -172,7 +172,7 @@ class TDVBarCard extends HTMLElement
       // if some bar defined start history data requester timer
       if(this.barData.length)
        {
-        setTimeout(TDVBarCard._reqHistEntityData,100,this,0);
+        setTimeout(TPowerCard._reqHistEntityData,100,this,0);
        }
      }
     //----------------------------------
@@ -264,12 +264,12 @@ class TDVBarCard extends HTMLElement
     baridx++;
     if(baridx<This.barData.length)
      {
-      setTimeout(TDVBarCard._reqHistEntityData,100,This,baridx);
+      setTimeout(TPowerCard._reqHistEntityData,100,This,baridx);
      }
     else
      {
       This._drawBarContent();
-      setTimeout(TDVBarCard._reqHistEntityData,60000,This,0);
+      setTimeout(TPowerCard._reqHistEntityData,60000,This,0);
      }
    }
 //#################################################################################################
@@ -523,13 +523,13 @@ class TDVBarCard extends HTMLElement
    }
  }
 
-customElements.define("tdv-bar-card", TDVBarCard);
+customElements.define("tpower-card", TPowerCard);
 
 window.customCards = window.customCards || [];
 window.customCards.push({
-  type: "tdv-bar-card",
-  name: "TDV Bar",
+  type: "tpower-card",
+  name: "TPOWER CARD",
   preview: true, // Optional - defaults to false
   description: "Bar chart oriented to display power sensors", // Optional
-  documentationURL: "https://github.com/tdvtdv/ha-tdv-bar"
+  documentationURL: "https://github.com/trollix/ha-tpower-card"
 });
