@@ -1,4 +1,4 @@
-const CARD_VERSION = '0.1.0';
+const CARD_VERSION = '0.1.1';
 const CARD_NAME = "HA-TPOWER-CARD";
 console.info(
   `%c  ${CARD_NAME}  %c  Version ${CARD_VERSION}  `,
@@ -6,141 +6,128 @@ console.info(
     'color: #000; font-weight: bold; background: #ddd',
 );
 
-class TPowerCard extends HTMLElement
- {
-//#################################################################################################  
-  // The user supplied configuration. Throw an exception and Home Assistant will render an error card.
-  setConfig(config)
-   {
-    if(!config.entities) 
-     {
-      throw new Error("You need to define an entities");
-     }
-    this.config=config;
-   }
-//#################################################################################################
-  // The height of your card. Home Assistant uses this to automatically distribute all cards over the available columns.
-  getCardSize()
-   {
-    if(this.barData) return math.trunc((this.barData.length*this.metric.bar_h)/50);
-    else return 1; 
-   }
-//#################################################################################################
-  // Whenever the state changes, a new `hass` object is set. Use this to update your content.
-  set hass(hass)
-   {
-    this._hass=hass;
-    // Initialize the content if it's not there yet.
-    if(!this.canvas)
-     {
-      this.GroupBySec=600; //10 minits
-      this.MaxHistStep=(24*60*60)/this.GroupBySec; 
+class TPowerCard extends HTMLElement {
 
-      //-------------------------------------------------------------------------------------------
-      // Define color constant
-      this._compStyle=getComputedStyle(document.getElementsByTagName('body')[0]);
-      this.fonts={}
-      this.fonts.name=this._compStyle.getPropertyValue("--paper-font-body1_-_font-size")+" "+this._compStyle.getPropertyValue("--paper-font-body1_-_font-family"); 
+    setConfig(config) {
+      if(!config.entities) {
+        throw new Error("You need to define an entities");
+      }
+      this.config=config;
+    }
 
-      this._rebuildColorValue();
+    getCardSize() {
+      if(this.barData) return math.trunc((this.barData.length*this.metric.bar_h)/50);
+      else return 1; 
+    }
 
-      this.barData=[];
+  set hass(hass) {
+
+      this._hass=hass;
+
+      // Initialize the content if it's not there yet.
+      if(!this.canvas) {
+        this.GroupBySec=600; //10 minits
+        this.MaxHistStep=(24*60*60)/this.GroupBySec; 
+
+        // Define color constant
+        this._compStyle=getComputedStyle(document.getElementsByTagName('body')[0]);
+        this.fonts={}
+        this.fonts.name=this._compStyle.getPropertyValue("--paper-font-body1_-_font-size")+" "+this._compStyle.getPropertyValue("--paper-font-body1_-_font-family"); 
+
+        this._rebuildColorValue();
+
+        this.barData=[];
    
-      // Check config for generate preview card
-      if(this.config.entities&&Array.isArray(this.config.entities)&&this.config.entities.length==1&&this.config.entities[0].entity&&this.config.entities[0].entity=="<enter base entity name>")
-       {
-        // Create full the object copy for prevent use preview configuration
-        this.config=JSON.parse(JSON.stringify(this.config));
+        // Check config for generate preview card
+        if(this.config.entities&&Array.isArray(this.config.entities)&&this.config.entities.length==1&&this.config.entities[0].entity&&this.config.entities[0].entity=="<enter base entity name>") {
+        
+          // Create full the object copy for prevent use preview configuration
+          this.config=JSON.parse(JSON.stringify(this.config));
 
-        this.config.title=null;
-        this.config.entities=[];
-        for(let i in this._hass.states)
-         {
-          if(i.startsWith("sensor.")&&i.endsWith("_power"))
-           {
-            console.log(i);
-            console.dir(this._hass.states[i]);
-            if(this.config.entities.push({entity:i,icon:"mdi:power-socket-de",name:this._hass.states[i].attributes.friendly_name})>3) break;
-           }
-         }
+          this.config.title=null;
+          this.config.entities=[];
+          for(let i in this._hass.states) {
+            if(i.startsWith("sensor.")&&i.endsWith("_power")) {
+              console.log(i);
+              console.dir(this._hass.states[i]);
+              if(this.config.entities.push({entity:i,icon:"mdi:power-socket-de",name:this._hass.states[i].attributes.friendly_name})>3) break;
+            }
+          }
 
-       }
+      }
 
       
-      if(this.config.entities)
-       {
+      if(this.config.entities) {
+        
         // Prepare entity array
         let a=Array.isArray(this.config.entities)?this.config.entities:[this.config.entities];
         for(let i in a) this.barData.push({ut:a[i].name??"",t:"",m:"",e:a[i].entity,i:a[i].icon,d:0,h:null,st:a[i].state??null,bar_fg:a[i].barcolor??null});  
-        //ut-user name e-entity i-icon d-cur.data h-hist.data st-entity on/off bar_fg-individual bar color 
-       }
-      //-------------------------------------------------------------------------------------------
-      // Define metrics
-      this.metric={}
-      this.metric.padding=10;
-      this.metric.iconsize=parseInt(this._compStyle.getPropertyValue("--paper-font-headline_-_font-size"));//24;//  style.getPropertyValue("--mdc-icon-size");
-      this.metric.iconwidth=this.metric.iconsize;
-      this.metric.chartwidth=146;
+          //ut-user name e-entity i-icon d-cur.data h-hist.data st-entity on/off bar_fg-individual bar color 
+        }
 
-      this.size_w = Math.max(this.config.width??300,this.offsetWidth);
-      this.size_h = Math.max(this.config.height??(this.barData.length>0?this.barData.length*(this.metric.iconsize*2):200),this.offsetHeight);
+        // Define metrics
+        this.metric={}
+        this.metric.padding=10;
+        this.metric.iconsize=parseInt(this._compStyle.getPropertyValue("--paper-font-headline_-_font-size"));//24;//  style.getPropertyValue("--mdc-icon-size");
+        this.metric.iconwidth=this.metric.iconsize;
+        this.metric.chartwidth=146;
 
-      // Calc bar height
-      if(this.barData.length) this.metric.bar_h=(this.size_h-this.metric.padding)/this.barData.length;
-      //-------------------------------------------------------------------------------------------
-      // Range
-      this.maxpos=this.config.rangemax>0?this.config.rangemax:2000; 
-      // Convert range value to log10 scale
-      this.maxposraw=this.maxpos;
+        this.size_w = Math.max(this.config.width??300,this.offsetWidth);
+        this.size_h = Math.max(this.config.height??(this.barData.length>0?this.barData.length*(this.metric.iconsize*2):200),this.offsetHeight);
 
-      switch(this.config.scaletype?this.config.scaletype.toLowerCase():"log10")
-       {
-        case "linear": break;
-        case "log10": this.maxpos=Math.log10(this.maxpos);break;
-       } 
-      //-------------------------------------------------------------------------------------------
-      // Create card content
-      let cnthtml=`<ha-card header="${this.config.title??''}" style="line-height:0;"><div style="position:relative;">`
-      cnthtml+=   ` <canvas class="card-content" width="${this.size_w}px" height="${this.size_h}px" tabindex="1" style="border-radius: var(--ha-card-border-radius,12px); padding:0"></canvas>`
+        // Calc bar height
+        if(this.barData.length) {
+          this.metric.bar_h=(this.size_h-this.metric.padding)/this.barData.length;
+        }
 
-      // Add icon element
-      for(let i in this.barData)
-       {
-        if(this.barData[i].i)
-         {
-          let edata="";
-          if(this.barData[i].st) edata='data-entity="'+this.barData[i].st+'"';
-          //cnthtml+=`<ha-icon id="tdvbar_${i}" icon="${this.barData[i].i}" ${edata} style="${edata?"cursor:pointer;":""} position: absolute; left:${this.metric.padding}px; top:${this.metric.bar_h*i+this.metric.padding+9/*+((this.metric.bar_h-this.metric.iconsize)/2)*/}px;"></ha-icon>`;
-          cnthtml+=`<ha-icon id="tdvbar_${i}" icon="${this.barData[i].i}" ${edata} style="${edata?"cursor:pointer;":""} position: absolute; left:${this.metric.padding}px; top:${this.metric.bar_h*i+this.metric.padding+(((this.metric.bar_h-this.metric.padding)-this.metric.iconsize)/2)}px;"></ha-icon>`;//+(((this.metric.bar_h-this.metric.padding)-this.metric.iconsize)/2)
-         }  
-       } 
+        // Range
+        this.maxpos=this.config.rangemax>0?this.config.rangemax:2000; 
+        // Convert range value to log10 scale
+        this.maxposraw=this.maxpos;
 
-      cnthtml+=   `</div></ha-card>`;
-      this.innerHTML=cnthtml;
+        switch(this.config.scaletype?this.config.scaletype.toLowerCase():"log10") {
+          case "linear": break;
+          case "log10": this.maxpos=Math.log10(this.maxpos);break;
+        } 
+      
+        // Create card content
+        let cnthtml=`<ha-card header="${this.config.title??''}" style="line-height:0;"><div style="position:relative;">`
+        cnthtml+=   ` <canvas class="card-content" width="${this.size_w}px" height="${this.size_h}px" tabindex="1" style="border-radius: var(--ha-card-border-radius,12px); padding:0"></canvas>`
 
-      this.canvas=this.querySelector("canvas");
-      this.ctx=this.canvas.getContext("2d");
-      // Calc font metric
-      this.ctx.save();
-      this.ctx.font=this.fonts.name;
-      let m=this.ctx.measureText("AQq");
-      this.metric.nameheight=m.fontBoundingBoxAscent+m.fontBoundingBoxDescent+5;
-      this.ctx.restore();
-      //-------------------------------
-      // set click event handler 
-      this.querySelectorAll("ha-icon").forEach(elAnchor=>
-       {
-        elAnchor.addEventListener("click",(ev)=>
-         {
-          let e=ev.target.getAttribute("data-entity"); 
-          if(e)
-           {
-            ev.stopPropagation();
-            //hass.callService("switch", "toggle", {entity_id:e});
-            this._fire("hass-more-info", { entityId: e });
-           }
-         });
-       });
+        // Add icon element
+        for(let i in this.barData) {
+          if(this.barData[i].i) {
+            let edata="";
+            if(this.barData[i].st) {
+              edata='data-entity="'+this.barData[i].st+'"';
+            }
+            cnthtml+=`<ha-icon id="tdvbar_${i}" icon="${this.barData[i].i}" ${edata} style="${edata?"cursor:pointer;":""} position: absolute; left:${this.metric.padding}px; top:${this.metric.bar_h*i+this.metric.padding+(((this.metric.bar_h-this.metric.padding)-this.metric.iconsize)/2)}px;"></ha-icon>`;//+(((this.metric.bar_h-this.metric.padding)-this.metric.iconsize)/2)
+          }  
+        } 
+
+        cnthtml+=   `</div></ha-card>`;
+        this.innerHTML=cnthtml;
+
+        this.canvas=this.querySelector("canvas");
+        this.ctx=this.canvas.getContext("2d");
+        // Calc font metric
+        this.ctx.save();
+        this.ctx.font=this.fonts.name;
+        let m=this.ctx.measureText("AQq");
+        this.metric.nameheight=m.fontBoundingBoxAscent+m.fontBoundingBoxDescent+5;
+        this.ctx.restore();
+        //-------------------------------
+        // set click event handler 
+        this.querySelectorAll("ha-icon").forEach(elAnchor=> {
+          elAnchor.addEventListener("click",(ev)=> {
+            let e=ev.target.getAttribute("data-entity"); 
+            if(e) {
+              ev.stopPropagation();
+              //hass.callService("switch", "toggle", {entity_id:e});
+              this._fire("hass-more-info", { entityId: e });
+            }
+          });
+        });
 
       this.canvas.addEventListener("click",(ev)=>
        {
@@ -427,42 +414,29 @@ class TPowerCard extends HTMLElement
        }
       this.ctx.stroke();
      }
-/*
-    //Chart grid
-    this.ctx.beginPath();
-    this.ctx.strokeStyle=this.colors.bar_grid;
-//    gridstep=this.maxposraw/3;
-    let pa=null;
-    for(let s=gridstep;s<this.maxposraw;s+=gridstep*2)
-     {
-      let a=this._getPos(s,height-2);
-      if(a==pa) break;
-      this.ctx.moveTo(chart_x,(y+height-1-a)+.5);
-      this.ctx.lineTo(chart_x+this.metric.chartwidth,(y+height-1-a)+.5);
-      pa=a;
-     }
-    this.ctx.stroke();
-*/
+
    }
-//#################################################################################################
-  _drawBarContent()
-   {
+
+
+  _drawBarContent() {
+
     this._rebuildColorValue();
     this.ctx.fillStyle=this.colors.card_bg;
     this.ctx.fillRect(0,0,this.size_w,this.size_h); 
     this.ctx.lineWidth=1;
     // Draw content
     let y=this.metric.padding;
-    for(let e in this.barData)
-     {
+    for(let e in this.barData) {
       let r_y=Math.round(y);   
       this._drawBarItem(this.metric.padding+.5,r_y+.5,this.size_w-(this.metric.padding+1),Math.round(this.metric.bar_h)-(this.metric.padding+.5),this.barData[e]);
       y+=this.metric.bar_h;
-     }
-   }
-//#################################################################################################
-  _rebuildColorValue()
-   {
+    }
+
+  }
+
+
+  _rebuildColorValue() {
+
     let isDarkMode=this._hass.themes.darkMode;
     this.colors={}
     this.colors.card_bg=   this._compStyle.getPropertyValue("--mdc-theme-surface");
@@ -477,38 +451,47 @@ class TPowerCard extends HTMLElement
     this.colors.bar_bg=    this._hslToRgb(hsl[0],hsl[1],hsl[2]-.35);
     hsl=this._rgbToHsl(this.colors.chart_fg);
     this.colors.chart_bg=  this._hslToRgb(hsl[0],hsl[1],hsl[2]-.35);
-   }
-//#################################################################################################
+
+  }
+
+
   _roundDate(date)
    {
     let coeff=1000*this.GroupBySec;
     return new Date(Math.floor(date.getTime() / coeff) * coeff);
    }
 //#################################################################################################
-  _roundRect(x, y, width, height, radius, fill, stroke)
-   {
-    if(typeof stroke == 'undefined')  {stroke = true;}
-    if(typeof radius === 'undefined') {radius = 5;}
-    if(typeof radius === 'number')    {radius = {tl: radius, tr: radius, br: radius, bl: radius};}
-    else 
-     {
-      let defaultRadius = {tl: 0, tr: 0, br: 0, bl: 0};
-      for(let side in defaultRadius) {radius[side]=radius[side]||defaultRadius[side];}
-     }
-    this.ctx.beginPath();
-    this.ctx.moveTo(x + radius.tl, y);
-    this.ctx.lineTo(x + width - radius.tr, y);
-    this.ctx.quadraticCurveTo(x + width, y, x + width, y + radius.tr);
-    this.ctx.lineTo(x + width, y + height - radius.br);
-    this.ctx.quadraticCurveTo(x + width, y + height, x + width - radius.br, y + height);
-    this.ctx.lineTo(x + radius.bl, y + height);
-    this.ctx.quadraticCurveTo(x, y + height, x, y + height - radius.bl);
-    this.ctx.lineTo(x, y + radius.tl);
-    this.ctx.quadraticCurveTo(x, y, x + radius.tl, y);
-    this.ctx.closePath();
-    if(fill)   {this.ctx.fill();}
-    if(stroke) {this.ctx.stroke();}
-   }
+  _roundRect(x, y, width, height, radius, fill, stroke) {
+      if(typeof stroke == 'undefined') {
+        stroke = true;
+      }
+      if(typeof radius === 'undefined') {
+        radius = 5;
+      }
+      if(typeof radius === 'number') {
+        radius = {tl: radius, tr: radius, br: radius, bl: radius};
+      } else {
+        let defaultRadius = {tl: 0, tr: 0, br: 0, bl: 0};
+        for(let side in defaultRadius) {radius[side]=radius[side]||defaultRadius[side];}
+      }
+      this.ctx.beginPath();
+      this.ctx.moveTo(x + radius.tl, y);
+      this.ctx.lineTo(x + width - radius.tr, y);
+      this.ctx.quadraticCurveTo(x + width, y, x + width, y + radius.tr);
+      this.ctx.lineTo(x + width, y + height - radius.br);
+      this.ctx.quadraticCurveTo(x + width, y + height, x + width - radius.br, y + height);
+      this.ctx.lineTo(x + radius.bl, y + height);
+      this.ctx.quadraticCurveTo(x, y + height, x, y + height - radius.bl);
+      this.ctx.lineTo(x, y + radius.tl);
+      this.ctx.quadraticCurveTo(x, y, x + radius.tl, y);
+      this.ctx.closePath();
+      if(fill) {
+        this.ctx.fill();
+      }
+      if(stroke) {
+        this.ctx.stroke();
+      }
+    }
 //#################################################################################################
   static getStubConfig()
    {
